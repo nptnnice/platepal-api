@@ -1,6 +1,6 @@
 class JsonResponse {
-  constructor(isSucess, error = null, data = null) {
-    this.isSucess = isSucess
+  constructor(is_success, error = null, data = null) {
+    this.is_success = is_success
     this.error = error
     this.data = data
   }
