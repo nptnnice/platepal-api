@@ -97,7 +97,84 @@ const getFoods = async (req, res) => {
   }
 }
 
+/**
+ * /api/insertUser
+ */
+const insertUser = async (req, res) => {
+  console.log('Calling /api/insertUser...')
+  try {
+    const {
+      id,
+      display_name,
+      email,
+      password,
+      dob,
+      gender,
+      goal_type_id,
+      start_weight,
+      height,
+      target_weight,
+      weekly_rate,
+      activity_level_id,
+      target_date,
+      daily_calories,
+      created_at,
+    } = req.body
+
+    const user = await query(
+      `UPSERT INTO public."user" (id, display_name, email, password, dob, gender, goal_type_id, 
+        start_weight, height, target_weight, weekly_rate, activity_level_id, target_date, daily_calories, created_at
+      ) VALUES (
+        '${id}',
+        '${display_name}',
+        '${email}',
+        '${password}',
+        '${dob}',
+        '${gender}',
+        ${goal_type_id},
+        ${start_weight},
+        ${height},
+        ${target_weight},
+        ${weekly_rate},
+        ${activity_level_id},
+        '${target_date}',
+        ${daily_calories},
+        '${created_at}'
+      ) RETURNING *`
+    )
+
+    console.log('Successfully inserted data.')
+    const jsonResponse = new JsonResponse(true, null, {
+      id: user.rows[0].id,
+      display_name: user.rows[0].display_name,
+      email: user.rows[0].email,
+      password: user.rows[0].password,
+      dob: user.rows[0].dob,
+      gender: user.rows[0].gender,
+      goal_type_id: user.rows[0].goal_type_id,
+      start_weight: user.rows[0].start_weight,
+      height: user.rows[0].height,
+      target_weight: user.rows[0].target_weight,
+      weekly_rate: user.rows[0].weekly_rate,
+      activity_level_id: user.rows[0].activity_level_id,
+      target_date: user.rows[0].target_date,
+      daily_calories: user.rows[0].daily_calories,
+      created_at: user.rows[0].created_at,
+    })
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
 module.exports = {
   getNewFoods,
   getFoods,
+  insertUser,
 }
