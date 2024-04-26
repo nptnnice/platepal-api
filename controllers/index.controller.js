@@ -18,9 +18,21 @@ const getNewFoods = async (req, res) => {
         const measureUnits = await query(
           `SELECT id, measure_unit_id, gram_per_unit, amount FROM food_measure_unit WHERE food_id = ${food.id}`
         )
+        const measureUnitsDetails = await Promise.all(
+          measureUnits.rows.map(async (measureUnit) => {
+            return {
+              food_measure_unit_id: measureUnit.id,
+              amount: measureUnit.amount,
+              measure_unit_id: measureUnit.measure_unit_id,
+              total_gram: measureUnit.amount * measureUnit.gram_per_unit,
+              gram_per_unit: measureUnit.gram_per_unit,
+            }
+          })
+        )
         const ingredients = await query(
           `SELECT * FROM food_ingredient WHERE food_id = ${food.id}`
         )
+        // -------- ingredient --------
         const ingredientDetails = await Promise.all(
           ingredients.rows.map(async (ingredient) => {
             const details = await query(
@@ -32,9 +44,19 @@ const getNewFoods = async (req, res) => {
             const measureUnits = await query(
               `SELECT id, measure_unit_id, gram_per_unit, amount FROM food_measure_unit WHERE food_id = ${ingredient.ingredient_id}`
             )
+            const total_gram =
+              ingredient.amount * currentMeasureUnit.rows[0].gram_per_unit
             const nutrients = await query(
               `SELECT nutrient_id, amount FROM food_nutrient WHERE food_id = ${ingredient.ingredient_id}`
             )
+            const nutrientAmounts = nutrients.rows.map((nutrient) => {
+              return {
+                nutrient_id: nutrient.nutrient_id,
+                amount: (nutrient.amount * total_gram) / 100.0,
+                amount_per_unit: nutrient.amount,
+              }
+            })
+
             return {
               id: ingredient.id,
               ingredient_id: details.rows[0].id,
@@ -43,16 +65,50 @@ const getNewFoods = async (req, res) => {
               category_id: details.rows[0].category_id,
               image: details.rows[0].image,
               amount: ingredient.amount,
-              current_measure_unit: currentMeasureUnit.rows[0],
-              measure_units: measureUnits.rows,
-              nutrients: nutrients.rows,
+              total_gram: total_gram,
+              current_measure_unit: {
+                food_measure_unit_id: currentMeasureUnit.rows[0].id,
+                amount: currentMeasureUnit.rows[0].amount,
+                measure_unit_id: currentMeasureUnit.rows[0].measure_unit_id,
+                total_gram:
+                  currentMeasureUnit.rows[0].amount *
+                  currentMeasureUnit.rows[0].gram_per_unit,
+                gram_per_unit: currentMeasureUnit.rows[0].gram_per_unit,
+              },
+              measure_units: measureUnits.rows.map((measureUnit) => {
+                return {
+                  food_measure_unit_id: measureUnit.id,
+                  amount: measureUnit.amount,
+                  measure_unit_id: measureUnit.measure_unit_id,
+                  total_gram: measureUnit.amount * measureUnit.gram_per_unit,
+                  gram_per_unit: measureUnit.gram_per_unit,
+                }
+              }),
+              nutrients: nutrientAmounts,
             }
           })
         )
+        // ---------------------------
 
         const nutrients = await query(
           `SELECT nutrient_id, amount FROM food_nutrient WHERE food_id = ${food.id}`
         )
+        const nutrientAmounts = nutrients.rows.map((nutrient) => {
+          if (food.category_id < 100) {
+            return {
+              nutrient_id: nutrient.nutrient_id,
+              amount:
+                (nutrient.amount * measureUnitsDetails[0].total_gram) / 100.0,
+              amount_per_unit: nutrient.amount,
+            }
+          } else {
+            return {
+              nutrient_id: nutrient.nutrient_id,
+              amount: nutrient.amount,
+              amount_per_unit: nutrient.amount,
+            }
+          }
+        })
 
         return {
           id: food.id,
@@ -60,9 +116,10 @@ const getNewFoods = async (req, res) => {
           name_th: food.name_th,
           category_id: food.category_id,
           image: food.image,
-          measure_units: measureUnits.rows,
+          current_measure_unit: measureUnitsDetails[0],
+          measure_units: measureUnitsDetails,
           ingredients: ingredientDetails,
-          nutrients: nutrients.rows,
+          nutrients: nutrientAmounts,
         }
       })
     )
