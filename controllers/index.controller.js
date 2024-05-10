@@ -179,11 +179,14 @@ const insertUser = async (req, res) => {
       target_date,
       daily_calories,
       created_at,
+      weight_logs,
     } = req.body
+
+    const weightLogsJsonString = JSON.stringify(weight_logs)
 
     const user = await query(
       `UPSERT INTO public."user" (id, display_name, email, password, dob, gender, goal_type_id, 
-        start_weight, height, target_weight, weekly_rate, activity_level_id, target_date, daily_calories, created_at
+        start_weight, height, target_weight, weekly_rate, activity_level_id, target_date, daily_calories, created_at, weight_logs
       ) VALUES (
         '${id}',
         '${display_name}',
@@ -199,9 +202,12 @@ const insertUser = async (req, res) => {
         ${activity_level_id},
         '${target_date}',
         ${daily_calories},
-        '${created_at}'
+        '${created_at}',
+        '${weightLogsJsonString}'
       ) RETURNING *`
     )
+
+    const weightLogsObject = JSON.parse(user.rows[0].weight_logs)
 
     console.log('Successfully inserted data.')
     const jsonResponse = new JsonResponse(true, null, {
@@ -220,6 +226,7 @@ const insertUser = async (req, res) => {
       target_date: user.rows[0].target_date,
       daily_calories: user.rows[0].daily_calories,
       created_at: user.rows[0].created_at,
+      weight_logs: weightLogsObject,
     })
     res.status(statusCode.SUCCESS).json(jsonResponse)
   } catch (error) {
@@ -377,10 +384,136 @@ const removeFoodFromLog = async (req, res) => {
   try {
     const { id } = req.body
 
-    await query('DELETE FROM food_log WHERE id = $1 RETURNING *', [id])
+    console.log('ID to remove:', id)
+    const idBigInt = BigInt(id)
+    console.log('ID to remove:', idBigInt)
+
+    await query('DELETE FROM public."food_log" WHERE id = $1', [idBigInt])
 
     console.log('Successfully removed data.')
     const jsonResponse = new JsonResponse(true, null, null)
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
+/**
+ * /api/login
+ */
+const login = async (req, res) => {
+  console.log('Calling /api/login...')
+  try {
+    const { email } = req.body
+
+    const user = await query('SELECT * FROM public."user" WHERE email = $1', [
+      email,
+    ])
+
+    if (user.rows.length === 0) {
+      console.log('User not found.')
+      const jsonResponse = new JsonResponse(
+        false,
+        errorMessage.USER_NOT_FOUND,
+        null
+      )
+      res.status(statusCode.SUCCESS).json(jsonResponse)
+      return
+    }
+
+    const weightLogs = JSON.parse(user.rows[0].weight_logs)
+
+    console.log('Successfully queried data.')
+    const jsonResponse = new JsonResponse(true, null, {
+      id: user.rows[0].id,
+      display_name: user.rows[0].display_name,
+      email: user.rows[0].email,
+      password: user.rows[0].password,
+      dob: user.rows[0].dob,
+      gender: user.rows[0].gender,
+      goal_type_id: user.rows[0].goal_type_id,
+      start_weight: user.rows[0].start_weight,
+      height: user.rows[0].height,
+      target_weight: user.rows[0].target_weight,
+      weekly_rate: user.rows[0].weekly_rate,
+      activity_level_id: user.rows[0].activity_level_id,
+      target_date: user.rows[0].target_date,
+      daily_calories: user.rows[0].daily_calories,
+      created_at: user.rows[0].created_at,
+      weight_logs: weightLogs,
+    })
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
+/**
+ * /api/updatePassword
+ */
+const updatePassword = async (req, res) => {
+  console.log('Calling /api/updatePassword...')
+  try {
+    const { email, password } = req.body
+
+    await query('UPDATE public."user" SET password = $1 WHERE email = $2', [
+      password,
+      email,
+    ])
+
+    console.log('Successfully updated data.')
+    const jsonResponse = new JsonResponse(true, null, null)
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
+/**
+ * /api/getFoodLogs
+ */
+const getFoodLogs = async (req, res) => {
+  console.log('Calling /api/getFoodLogs...')
+  try {
+    const { user_id } = req.body
+
+    const foodLogs = await query(
+      'SELECT * FROM public."food_log" WHERE user_id = $1',
+      [user_id]
+    )
+
+    const parsedFoodLogs = foodLogs.rows.map((foodLog) => {
+      return {
+        id: foodLog.id,
+        user_id: foodLog.user_id,
+        meal_id: foodLog.meal_id,
+        rec_date: foodLog.rec_date,
+        food_log: JSON.parse(foodLog.food_log),
+      }
+    })
+
+    console.log('Successfully queried data.')
+    const jsonResponse = new JsonResponse(true, null, {
+      food_logs: parsedFoodLogs,
+    })
     res.status(statusCode.SUCCESS).json(jsonResponse)
   } catch (error) {
     console.log(error)
@@ -401,4 +534,7 @@ module.exports = {
   getFoodLogsInDay,
   getFoodLogsInMeal,
   removeFoodFromLog,
+  login,
+  updatePassword,
+  getFoodLogs,
 }

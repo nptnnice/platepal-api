@@ -9,6 +9,9 @@ const {
   getFoodLogsInDay,
   getFoodLogsInMeal,
   removeFoodFromLog,
+  login,
+  updatePassword,
+  getFoodLogs
 } = require('../controllers/index.controller')
 
 router.get('/', (req, res) => {
@@ -24,5 +27,8 @@ router.post('/api/insertFoodLogs', insertFoodLogs)
 router.post('/api/getFoodLogsInDay', getFoodLogsInDay)
 router.post('/api/getFoodLogsInMeal', getFoodLogsInMeal)
 router.post('/api/removeFoodFromLog', removeFoodFromLog)
+router.post('/api/login', login)
+router.post('/api/updatePassword', updatePassword)
+router.post('/api/getFoodLogs', getFoodLogs)
 
 module.exports = router

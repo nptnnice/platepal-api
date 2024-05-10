@@ -1,6 +1,6 @@
 module.exports = {
   INTERNAL_SERVER_ERROR: 'Internal server error',
-  NOT_FOUND: 'Resource not found',
+  USER_NOT_FOUND: 'User not found',
   UNAUTHORIZED: 'Unauthorized',
   FORBIDDEN: 'Forbidden',
 }
