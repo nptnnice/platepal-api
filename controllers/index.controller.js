@@ -184,27 +184,32 @@ const insertUser = async (req, res) => {
 
     const weightLogsJsonString = JSON.stringify(weight_logs)
 
+    const weeklyRateParam = weekly_rate !== undefined ? weekly_rate : null
+
     const user = await query(
       `UPSERT INTO public."user" (id, display_name, email, password, dob, gender, goal_type_id, 
         start_weight, height, target_weight, weekly_rate, activity_level_id, target_date, daily_calories, created_at, weight_logs
       ) VALUES (
-        '${id}',
-        '${display_name}',
-        '${email}',
-        '${password}',
-        '${dob}',
-        '${gender}',
-        ${goal_type_id},
-        ${start_weight},
-        ${height},
-        ${target_weight},
-        ${weekly_rate},
-        ${activity_level_id},
-        '${target_date}',
-        ${daily_calories},
-        '${created_at}',
-        '${weightLogsJsonString}'
-      ) RETURNING *`
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+      ) RETURNING *`,
+      [
+        id,
+        display_name,
+        email,
+        password,
+        dob,
+        gender,
+        goal_type_id,
+        start_weight,
+        height,
+        target_weight,
+        weeklyRateParam,
+        activity_level_id,
+        target_date,
+        daily_calories,
+        created_at,
+        weightLogsJsonString,
+      ]
     )
 
     const weightLogsObject = JSON.parse(user.rows[0].weight_logs)
