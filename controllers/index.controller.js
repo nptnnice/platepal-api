@@ -362,24 +362,18 @@ const insertFoodLogs = async (req, res) => {
 
     const foodLogJsonString = JSON.stringify(food_log)
 
+    console.log(id)
+
     let queryText
     if (id) {
       console.log('Updating food log...')
-      queryText = `INSERT INTO public."food_log" (id, user_id, meal_id, rec_date, food_log) VALUES (
-        ${id},
-        '${user_id}',
-        ${meal_id},
-        '${rec_date}',
-        '${foodLogJsonString}'
-      ) ON CONFLICT (id) DO UPDATE
-      SET user_id = EXCLUDED.user_id,
-          meal_id = EXCLUDED.meal_id,
-          rec_date = EXCLUDED.rec_date,
-          food_log = EXCLUDED.food_log
+      queryText = `UPDATE public."food_log"
+      SET user_id = '${user_id}', meal_id = ${meal_id}, rec_date = '${rec_date}', food_log = '${foodLogJsonString}'
+      WHERE id = ${id}
       RETURNING *`
     } else {
       console.log('Inserting new food log...')
-      queryText = `UPSERT INTO public."food_log" (user_id, meal_id, rec_date, food_log) VALUES (
+      queryText = `INSERT INTO public."food_log" (user_id, meal_id, rec_date, food_log) VALUES (
         '${user_id}',
         ${meal_id},
         '${rec_date}',
@@ -388,8 +382,7 @@ const insertFoodLogs = async (req, res) => {
     }
 
     const foodLog = await query(queryText)
-
-    const parsedFoodLogs = JSON.parse(foodLog.rows[0].food_log)
+    console.log(foodLog.rows[0])
 
     console.log('Successfully inserted data.')
     const jsonResponse = new JsonResponse(true, null, {
@@ -397,7 +390,7 @@ const insertFoodLogs = async (req, res) => {
       user_id: foodLog.rows[0].user_id,
       meal_id: foodLog.rows[0].meal_id,
       rec_date: foodLog.rows[0].rec_date,
-      food_log: parsedFoodLogs,
+      food_log: Json.parse(foodLog.rows[0].food_log),
     })
 
     res.status(statusCode.SUCCESS).json(jsonResponse)
@@ -496,9 +489,7 @@ const removeFoodFromLog = async (req, res) => {
   try {
     const { id } = req.body
 
-    console.log('ID to remove:', id)
     const idBigInt = BigInt(id)
-    console.log('ID to remove:', idBigInt)
 
     await query('DELETE FROM public."food_log" WHERE id = $1', [idBigInt])
 
@@ -720,14 +711,10 @@ const getUserRecipes = async (req, res) => {
   try {
     const { user_id } = req.body
 
-    console.log('User ID:', user_id)
-
     const userRecipes = await query(
       'SELECT * FROM public."user_recipe" WHERE user_id = $1',
       [user_id]
     )
-
-    console.log('Queried data:', userRecipes.rows)
 
     const parsedUserRecipes = userRecipes.rows.map((userRecipe) => {
       return {
