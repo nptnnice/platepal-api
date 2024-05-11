@@ -246,6 +246,113 @@ const insertUser = async (req, res) => {
 }
 
 /**
+ * /api/signup
+ */
+const signup = async (req, res) => {
+  console.log('Calling /api/signup...')
+  try {
+    const {
+      id,
+      display_name,
+      email,
+      password,
+      dob,
+      gender,
+      goal_type_id,
+      start_weight,
+      height,
+      target_weight,
+      weekly_rate,
+      activity_level_id,
+      target_date,
+      daily_calories,
+      created_at,
+      weight_logs,
+    } = req.body
+
+    const isExist = await isEmailExist(email)
+    if (isExist) {
+      console.log('Email already exists.')
+      const jsonResponse = new JsonResponse(
+        false,
+        errorMessage.EMAIL_ALREADY_EXISTS,
+        null
+      )
+      res.status(statusCode.SUCCESS).json(jsonResponse)
+      return
+    }
+
+    const weightLogsJsonString = JSON.stringify(weight_logs)
+
+    const weeklyRateParam = weekly_rate !== undefined ? weekly_rate : null
+
+    const user = await query(
+      `UPSERT INTO public."user" (id, display_name, email, password, dob, gender, goal_type_id, 
+        start_weight, height, target_weight, weekly_rate, activity_level_id, target_date, daily_calories, created_at, weight_logs
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+      ) RETURNING *`,
+      [
+        id,
+        display_name,
+        email,
+        password,
+        dob,
+        gender,
+        goal_type_id,
+        start_weight,
+        height,
+        target_weight,
+        weeklyRateParam,
+        activity_level_id,
+        target_date,
+        daily_calories,
+        created_at,
+        weightLogsJsonString,
+      ]
+    )
+
+    const weightLogsObject = JSON.parse(user.rows[0].weight_logs)
+
+    console.log('Successfully inserted data.')
+    const jsonResponse = new JsonResponse(true, null, {
+      id: user.rows[0].id,
+      display_name: user.rows[0].display_name,
+      email: user.rows[0].email,
+      password: user.rows[0].password,
+      dob: user.rows[0].dob,
+      gender: user.rows[0].gender,
+      goal_type_id: user.rows[0].goal_type_id,
+      start_weight: user.rows[0].start_weight,
+      height: user.rows[0].height,
+      target_weight: user.rows[0].target_weight,
+      weekly_rate: user.rows[0].weekly_rate,
+      activity_level_id: user.rows[0].activity_level_id,
+      target_date: user.rows[0].target_date,
+      daily_calories: user.rows[0].daily_calories,
+      created_at: user.rows[0].created_at,
+      weight_logs: weightLogsObject,
+    })
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
+const isEmailExist = async (email) => {
+  const user = await query('SELECT * FROM public."user" WHERE email = $1', [
+    email,
+  ])
+  return user.rows.length > 0
+}
+
+/**
  * /api/insertFoodLogs
  */
 const insertFoodLogs = async (req, res) => {
@@ -531,6 +638,121 @@ const getFoodLogs = async (req, res) => {
   }
 }
 
+/**
+ * /api/insertUserRecipe
+ */
+const insertUserRecipe = async (req, res) => {
+  console.log('Calling /api/insertUserRecipe...')
+  try {
+    const { id, user_id, recipe } = req.body
+
+    const recipeJsonString = JSON.stringify(recipe)
+
+    let queryText
+    if (id) {
+      console.log('Updating recipe...')
+      queryText = `UPDATE public."user_recipe"
+        SET user_id = '${user_id}', recipe = '${recipeJsonString}'
+        WHERE id = ${id}
+        RETURNING *`
+    } else {
+      console.log('Inserting new recipe...')
+      queryText = `INSERT INTO public."user_recipe" (user_id, recipe) VALUES (
+        '${user_id}',
+        '${recipeJsonString}'
+      ) RETURNING *`
+    }
+
+    const userRecipe = await query(queryText)
+
+    const parsedRecipe = JSON.parse(userRecipe.rows[0].recipe)
+
+    console.log('Successfully inserted data.')
+    const jsonResponse = new JsonResponse(true, null, {
+      id: userRecipe.rows[0].id,
+      user_id: userRecipe.rows[0].user_id,
+      recipe: parsedRecipe,
+    })
+
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
+/**
+ * /api/removeUserRecipe
+ */
+const removeUserRecipe = async (req, res) => {
+  console.log('Calling /api/removeUserRecipe...')
+  try {
+    const { id } = req.body
+
+    const idBigInt = BigInt(id)
+
+    await query('DELETE FROM public."user_recipe" WHERE id = $1', [idBigInt])
+
+    console.log('Successfully removed data.')
+    const jsonResponse = new JsonResponse(true, null, null)
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
+/**
+ * /api/getUserRecipes
+ */
+const getUserRecipes = async (req, res) => {
+  console.log('Calling /api/getUserRecipes...')
+  try {
+    const { user_id } = req.body
+
+    console.log('User ID:', user_id)
+
+    const userRecipes = await query(
+      'SELECT * FROM public."user_recipe" WHERE user_id = $1',
+      [user_id]
+    )
+
+    console.log('Queried data:', userRecipes.rows)
+
+    const parsedUserRecipes = userRecipes.rows.map((userRecipe) => {
+      return {
+        id: userRecipe.id,
+        user_id: userRecipe.user_id,
+        recipe: JSON.parse(userRecipe.recipe),
+      }
+    })
+
+    console.log('Successfully queried data.')
+    const jsonResponse = new JsonResponse(true, null, {
+      user_recipes: parsedUserRecipes,
+    })
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
 module.exports = {
   getNewFoods,
   getFoods,
@@ -542,4 +764,8 @@ module.exports = {
   login,
   updatePassword,
   getFoodLogs,
+  insertUserRecipe,
+  removeUserRecipe,
+  getUserRecipes,
+  signup,
 }

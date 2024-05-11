@@ -11,7 +11,11 @@ const {
   removeFoodFromLog,
   login,
   updatePassword,
-  getFoodLogs
+  getFoodLogs,
+  insertUserRecipe,
+  removeUserRecipe,
+  getUserRecipes,
+  signup,
 } = require('../controllers/index.controller')
 
 router.get('/', (req, res) => {
@@ -30,5 +34,9 @@ router.post('/api/removeFoodFromLog', removeFoodFromLog)
 router.post('/api/login', login)
 router.post('/api/updatePassword', updatePassword)
 router.post('/api/getFoodLogs', getFoodLogs)
+router.post('/api/insertUserRecipe', insertUserRecipe)
+router.post('/api/removeUserRecipe', removeUserRecipe)
+router.post('/api/getUserRecipes', getUserRecipes)
+router.post('/api/signup', signup)
 
 module.exports = router

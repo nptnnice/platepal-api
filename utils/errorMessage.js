@@ -3,4 +3,5 @@ module.exports = {
   USER_NOT_FOUND: 'User not found',
   UNAUTHORIZED: 'Unauthorized',
   FORBIDDEN: 'Forbidden',
+  EMAIL_ALREADY_EXISTS: 'Email already exists',
 }
