@@ -362,8 +362,6 @@ const insertFoodLogs = async (req, res) => {
 
     const foodLogJsonString = JSON.stringify(food_log)
 
-    console.log(id)
-
     let queryText
     if (id) {
       console.log('Updating food log...')
@@ -382,7 +380,6 @@ const insertFoodLogs = async (req, res) => {
     }
 
     const foodLog = await query(queryText)
-    console.log(foodLog.rows[0])
 
     console.log('Successfully inserted data.')
     const jsonResponse = new JsonResponse(true, null, {
@@ -390,7 +387,7 @@ const insertFoodLogs = async (req, res) => {
       user_id: foodLog.rows[0].user_id,
       meal_id: foodLog.rows[0].meal_id,
       rec_date: foodLog.rows[0].rec_date,
-      food_log: Json.parse(foodLog.rows[0].food_log),
+      food_log: JSON.parse(foodLog.rows[0].food_log),
     })
 
     res.status(statusCode.SUCCESS).json(jsonResponse)
@@ -740,6 +737,103 @@ const getUserRecipes = async (req, res) => {
   }
 }
 
+/**
+ * /api/insertChatbotHistory
+ */
+const insertChatbotHistory = async (req, res) => {
+  console.log('Calling /api/insertChatbotHistory...')
+  try {
+    const { chatbot_history } = req.body
+
+    // Prepare query
+    const chatbotHistory = Promise.all(
+      chatbot_history.map(async (history) => {
+        const values = [
+          history.user_id,
+          history.message,
+          history.sender,
+          history.timestamp,
+        ]
+        const queryText =
+          'INSERT INTO public."chatbot_history" (user_id, message, sender, timestamp) VALUES ($1, $2, $3, $4) RETURNING *'
+        return await query(queryText, values)
+      })
+    )
+
+    console.log('Successfully inserted data.')
+    const jsonResponse = new JsonResponse(true, null, null)
+
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
+/**
+ * /api/getChatbotHistory
+ */
+const getChatbotHistory = async (req, res) => {
+  console.log('Calling /api/getChatbotHistory...')
+  try {
+    const { user_id } = req.body
+
+    const chatbotHistory = await query(
+      'SELECT * FROM public."chatbot_history" WHERE user_id = $1',
+      [user_id]
+    )
+
+    console.log('Successfully queried data.')
+    const jsonResponse = new JsonResponse(true, null, {
+      chatbot_history: chatbotHistory.rows,
+    })
+
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
+/**
+ * /api/clearChatbotHistory
+ */
+const clearChatbotHistory = async (req, res) => {
+  console.log('Calling /api/clearChatbotHistory...')
+  try {
+    const { user_id } = req.body
+
+    await query('DELETE FROM public."chatbot_history" WHERE user_id = $1', [
+      user_id,
+    ])
+
+    console.log('Successfully cleared data.')
+    const jsonResponse = new JsonResponse(true, null, null)
+
+    res.status(statusCode.SUCCESS).json(jsonResponse)
+  } catch (error) {
+    console.log(error)
+    const jsonResponse = new JsonResponse(
+      false,
+      errorMessage.INTERNAL_SERVER_ERROR,
+      null
+    )
+
+    res.status(statusCode.INTERNAL_SERVER_ERROR).json(jsonResponse)
+  }
+}
+
 module.exports = {
   getNewFoods,
   getFoods,
@@ -755,4 +849,7 @@ module.exports = {
   removeUserRecipe,
   getUserRecipes,
   signup,
+  insertChatbotHistory,
+  getChatbotHistory,
+  clearChatbotHistory,
 }

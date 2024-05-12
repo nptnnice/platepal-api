@@ -16,6 +16,9 @@ const {
   removeUserRecipe,
   getUserRecipes,
   signup,
+  insertChatbotHistory,
+  getChatbotHistory,
+  clearChatbotHistory,
 } = require('../controllers/index.controller')
 
 router.get('/', (req, res) => {
@@ -38,5 +41,8 @@ router.post('/api/insertUserRecipe', insertUserRecipe)
 router.post('/api/removeUserRecipe', removeUserRecipe)
 router.post('/api/getUserRecipes', getUserRecipes)
 router.post('/api/signup', signup)
+router.post('/api/insertChatbotHistory', insertChatbotHistory)
+router.post('/api/getChatbotHistory', getChatbotHistory)
+router.post('/api/clearChatbotHistory', clearChatbotHistory)
 
 module.exports = router
